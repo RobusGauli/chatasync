@@ -15,6 +15,7 @@ class Server:
         
         self.host = config.host or self.DEFAULT_HOST
         self.port = config.port or self.DEFAULT_PORT
+        self._client_cluster = set()
 
 
     @classmethod
@@ -55,15 +56,26 @@ class Server:
     
     async def _handler(self, websocket, path):
         print('Got connection from the ', websocket)
+        #store the websocket in a set
+        self._client_cluster.add(websocket)
         while True:
-            #wait fro the connection
+            #wait for the connection
             rcv = await websocket.recv()
-            print(rcv)
-            await websocket.send(rcv + '>>')
+            
+            for client in self._client_cluster.difference({websocket}):
+                await client.send(rcv)
     
     def run(self):
-        server = websockets
+        #this runs the server
 
+        server = websockets.serve(
+            self._handler,
+            host=self.host,
+            port=self.port
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(server)
+        loop.run_forever()
 
 # ignore
 class mdict(dict):
@@ -77,4 +89,5 @@ class mdict(dict):
 
 if __name__ == '__main__':
     s = Server.from_command_line()
+    s.run()
     
