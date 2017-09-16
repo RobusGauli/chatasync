@@ -63,7 +63,12 @@ class Server:
             rcv = await websocket.recv()
             
             for client in self._client_cluster.difference({websocket}):
-                await client.send(rcv)
+                try:
+                    await client.send(rcv)
+                except websockets.exceptions.ConnectionClosed:
+                    #if connection closed
+                    print('client removed')
+                    self._client_cluster.discard(websocket)
     
     def run(self):
         #this runs the server
