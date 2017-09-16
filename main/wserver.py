@@ -57,24 +57,32 @@ class Server:
     
     async def _handler(self, websocket, path):
         print('Got connection from the ', websocket)
+        
         #store the websocket in a set
-        self._client_cluster.add(websocket)
+        token = path.lstrip('/')
+        if token in self._cluster_group:
+            self._cluster_group[token].add(websocket)
+        else:
+            self._cluster_group[token] = set((websocket,))
+        print(self._cluster_group)
+        #self._client_cluster.add(websocket)
         while True:
             #wait for the connection
             try:
                 rcv = await websocket.recv()
+                                
             except websockets.exceptions.ConnectionClosed:
-                self._client_cluster.discard(websocket)
+                self._cluster_group[token].discard(websocket)
                 print('cient removed')
                 break
             
-            for client in self._client_cluster.difference({websocket}):
+            for client in self._cluster_group[token].difference({websocket}):
                 try:
                     await client.send(rcv)
                 except websockets.exceptions.ConnectionClosed:
                     #if connection closed
                     print('client removed')
-                    self._client_cluster.discard(websocket)
+                    self._cluster_group[token].discard(websocket)
                     break
     
     def run(self):
