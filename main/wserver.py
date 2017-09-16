@@ -15,6 +15,7 @@ class Server:
         
         self.host = config.host or self.DEFAULT_HOST
         self.port = config.port or self.DEFAULT_PORT
+        self._cluster_group = {}
         self._client_cluster = set()
 
 
@@ -60,7 +61,12 @@ class Server:
         self._client_cluster.add(websocket)
         while True:
             #wait for the connection
-            rcv = await websocket.recv()
+            try:
+                rcv = await websocket.recv()
+            except websockets.exceptions.ConnectionClosed:
+                self._client_cluster.discard(websocket)
+                print('cient removed')
+                break
             
             for client in self._client_cluster.difference({websocket}):
                 try:
@@ -69,6 +75,7 @@ class Server:
                     #if connection closed
                     print('client removed')
                     self._client_cluster.discard(websocket)
+                    break
     
     def run(self):
         #this runs the server
